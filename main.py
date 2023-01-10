@@ -73,7 +73,16 @@ class Player:
         return simpleHand
 
     def sorting(self, card):
-        return card.getSimpleCard()
+        key = card.getSimpleCard()
+        switcher = {
+            'A' : 1,
+            '10' : 2,
+            'K' : 3,
+            'Q' : 4,
+            'J' : 5,
+            '9' : 6
+        }
+        return key[0] + str(switcher.get(key[1:]))
 
     def sortHand(self):
         self._hand.sort(key=self.sorting)
@@ -90,19 +99,23 @@ class Player:
             else:
                 print(self.getName() + ", enter appropriate bid")
                 self.askBid(currentBid, first)
+                return
         else:
             try:
                 int(bid)
             except ValueError:
                 print(self.getName() + ", enter integer bid")
                 self.askBid(currentBid, first)
+                return
             bid = int(bid)
             if bid % 10 != 0:
                 print(self.getName() + ", enter appropriate integer bid")
                 self.askBid(currentBid, first)
+                return
             if bid <= currentBid:
                 print(self.getName() + ", enter larger bid")
                 self.askBid(currentBid, first)
+                return
             self._bid = bid
 
     def getBid(self):
@@ -173,7 +186,7 @@ class Team:
     def getPartner2(self):
         return self._p2
 
-class Pinochle:
+class Game:
 
     def __init__(self, players):
         self._p1 = Player(players[0])
@@ -183,16 +196,31 @@ class Pinochle:
         self._allPlayers = [self._p1, self._p2, self._p3, self._p4]
         self._team1 = Team(self._p1, self._p2)
         self._team2 = Team(self._p3, self._p4)
+        self._allTeams = [self._team1, self._team2]
+
+    def getAllPlayers(self):
+        return self._allPlayers
+
+    def getPlayers(self, number): #number is 1-4
+        return self._allPlayers[number - 1]
+
+    def getAllTeams(self):
+        return self._allTeams
+
+    def getTeams(self, number): # number is 1-2
+        return self._allTeams[number-1]
+
+class PinochleRound:
+
+    def __init__(self, game):
+        self._allPlayers = game.getAllPlayers()
+        self._team1 = game.getTeams(1)
+        self._team2 = game.getTeams(2)
         self._deck = Deck()
         self._deck.shuffle()
         self._trump = False
         self._finalBid = False
         self._tookBid = False
-        print(self._p1.getName(), self._p1)
-        print(self._p2.getName(), self._p2)
-        print(self._p3.getName(), self._p3)
-        print(self._p4.getName(), self._p4)
-
 
     def deal(self):
         for index in range(12):
@@ -202,7 +230,6 @@ class Pinochle:
     def getPlayer(self, playerName):
         for player in self._allPlayers:
             if player.getName() == playerName:
-                print("in loop: ", player)
                 return player
 
     def showHand(self, playerName):
@@ -287,11 +314,12 @@ class Pinochle:
 
 if __name__ == '__main__':
     players = ["Lizzy", "Micah", "Dad", "Mom"]
-    myGame = Pinochle(players)
-    myGame.deal()
-    myGame.showHand("Lizzy")
-    myGame.bidding()
-    myGame.showHand("Micah")
-    myGame.passCards()
-    myGame.scoreMeld()
+    myGame = Game(players)
+    round = PinochleRound(myGame)
+    round.deal()
+    round.showHand("Lizzy")
+    round.bidding()
+    round.showHand("Micah")
+    round.passCards()
+    round.scoreMeld()
 
