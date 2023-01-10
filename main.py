@@ -306,7 +306,6 @@ class PinochleRound:
         for card in passingBack:
             player.removeCard(player.getCardFromSimple(card))
 
-
     def scoreMeld(self):
         for player in self._allPlayers:
             player.scoreHand(self._trump)
