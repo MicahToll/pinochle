@@ -7,8 +7,8 @@ class Card:
         self._suit = suit
         self._rank = rank
 
-    def getCard(self):
-        return (self._suit, self._rank)
+    def getCardNeat(self):
+        return (self._suit.value, self._rank.value)
 
     def getSuit(self):
         return self._suit
@@ -23,10 +23,10 @@ class Card:
             return False
 
     def getSimpleCard(self):
-        return self._suit[0] + self._rank
+        return self._suit.value[0] + self._rank.value
 
     def isCounter(self):
-        if self._rank == 'A' or '10' or 'K':
+        if self._rank == Ranks.ACE or Ranks.TEN or Ranks.KING:
             return True
         else:
             return False
@@ -40,16 +40,28 @@ class Card:
             'J' : 5,
             '9' : 6
         }
-        return switcher.get(self._rank)
+        return switcher.get(self._rank.value)
 
+def getRankNum(rank):
+    if type(rank) is Ranks.ACE:
+        rank = rank.value
+    switcher = {
+        'A' : 1,
+        '10' : 2,
+        'K' : 3,
+        'Q' : 4,
+        'J' : 5,
+        '9' : 6
+    }
+    return switcher.get(rank)
 
 class Ranks(Enum):
     ACE = 'A'
-    TEN = 2
-    KING = 3
-    QUEEN = 4
-    JACK = 5
-    NINE = 6
+    TEN = '10'
+    KING = 'K'
+    QUEEN = 'Q'
+    JACK = 'J'
+    NINE = '9'
 
 class Suits(Enum):
     SPADES = 's'
@@ -61,11 +73,11 @@ class Suits(Enum):
 class Deck:
 
     def __init__(self):
-        ranks = ["A", "10", "K", "Q", "J", "9"]
-        self._suits = ["hearts", "spades", "diamonds", "clubs"]
+        #ranks = [Ranks.ACE, Ranks.TEN, Ranks.KING, Ranks.QUEEN, Ranks.JACK, Ranks.NINE]
+        self._suits = [Suits.SPADES, Suits.CLUBS, Suits.DIAMONDS, Suits.HEARTS]
         self._deck = []
         for suit in self._suits:
-            for rank in ranks:
+            for rank in Ranks:
                 self._deck.append(Card(suit, rank))
                 self._deck.append(Card(suit, rank))
 
@@ -180,7 +192,7 @@ class Player:
             firstSuit,firstRank = currentTricks[0]
         trickSimple = input(self.getName() + ", play trick:")
 
-        trick = Card(, strToRank(trickSimple[1:]))
+        trick = Card(trickSimple, (trickSimple[1:]))
         print("hi")
         for card in self._hand:
             if card.getSimpleCard() == trick:
@@ -360,7 +372,7 @@ class PinochleRound:
         player = self.getPlayer(playerName)
         print(playerName + "'s hand:")
         for card in player.getHand():
-            print(card.getCard())
+            print(card.getCardNeat())
 
     def bidding(self):
         passed = 0
@@ -399,7 +411,10 @@ class PinochleRound:
             self._tookBid = biddingPlayers[0]
             print("Final bid: " + str(finalBid) + ", " + biddingPlayers[0].getName())
             while True:
-                self._trump = input(biddingPlayers[0].getName() + ", enter trump suit:")
+                trump = input(biddingPlayers[0].getName() + ", enter trump suit:")
+                for suit in Suits:
+                    if trump == suit.name:
+                        self._trump = suit
                 if self._trump in self._deck.getSuits():
                     break
 
@@ -461,10 +476,12 @@ class PinochleRound:
                     print(len(trickCards))
                     nextPlayer = winPlayer
                     round += 1
-3
+
 
 
 if __name__ == '__main__':
+    for suit in Suits:
+        print(suit.name)
     players = ["Lizzy", "Micah", "Dad", "Mom"]
     myGame = Game(players)
     round = PinochleRound(myGame)
