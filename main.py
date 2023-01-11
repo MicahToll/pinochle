@@ -1,4 +1,5 @@
 import random
+from enum import Enum
 
 class Card:
 
@@ -9,6 +10,12 @@ class Card:
     def getCard(self):
         return (self._suit, self._rank)
 
+    def getSuit(self):
+        return self._suit
+
+    def getRankStr(self):
+        return self._rank
+
     def isEqual(self, card):
         if self._suit == card._suit and self._rank == card._rank:
             return True
@@ -17,6 +24,39 @@ class Card:
 
     def getSimpleCard(self):
         return self._suit[0] + self._rank
+
+    def isCounter(self):
+        if self._rank == 'A' or '10' or 'K':
+            return True
+        else:
+            return False
+
+    def getRankNum(self):
+        switcher = {
+            'A' : 1,
+            '10' : 2,
+            'K' : 3,
+            'Q' : 4,
+            'J' : 5,
+            '9' : 6
+        }
+        return switcher.get(self._rank)
+
+
+class Ranks(Enum):
+    ACE = 'A'
+    TEN = 2
+    KING = 3
+    QUEEN = 4
+    JACK = 5
+    NINE = 6
+
+class Suits(Enum):
+    SPADES = 's'
+    CLUBS = 'c'
+    DIAMONDS = 'd'
+    HEARTS = 'h'
+
 
 class Deck:
 
@@ -56,9 +96,18 @@ class Player:
             if card.getSimpleCard() == simpleCard:
                 return card
 
+    def resetBid(self):
+        self._bid = ""
+
     def fillHand(self, card):
         self._hand.append(card)
         self.sortHand()
+
+    def isInHand(self, card):
+        for c in self._hand:
+            if c == card:
+                return True
+        return False
 
     def removeCard(self, card):
         self._hand.remove(card)
@@ -74,15 +123,7 @@ class Player:
 
     def sorting(self, card):
         key = card.getSimpleCard()
-        switcher = {
-            'A' : 1,
-            '10' : 2,
-            'K' : 3,
-            'Q' : 4,
-            'J' : 5,
-            '9' : 6
-        }
-        return key[0] + str(switcher.get(key[1:]))
+        return key[0] + str(card.getRankNum())
 
     def sortHand(self):
         self._hand.sort(key=self.sorting)
@@ -117,6 +158,59 @@ class Player:
                 self.askBid(currentBid, first)
                 return
             self._bid = bid
+
+    def outOfSuit(self, suit):
+        for card in self._hand:
+            if card.getSuit() == suit:
+                return False
+        return True
+
+    def canBeat(self, suit, rank):
+        for card in self._hand:
+            if card.getSuit() == suit:
+                if card.getRankNum() > rank:
+                    return True
+        return False
+
+    def askTrick(self, currentTricks, winRank, winSuit, trump):
+        if currentTricks == []:
+            leadingTrick = True
+        else:
+            leadingTrick = False
+            firstSuit,firstRank = currentTricks[0]
+        trickSimple = input(self.getName() + ", play trick:")
+
+        trick = Card(, strToRank(trickSimple[1:]))
+        print("hi")
+        for card in self._hand:
+            if card.getSimpleCard() == trick:
+                print("1")
+                if leadingTrick:
+                    return trick
+                if not self.outOfSuit(firstSuit):
+                    print("2")
+                    if self.canBeat(winRank):
+                        print("3")
+                        if trick[0] == firstSuit[0] and trick[1:] > winRank:
+                            return trick
+                        else:
+                            print(self.getName() + ", enter appropriate trick")
+                            self.askTrick(currentTricks, winRank, winSuit, trump)
+                            return
+                    else:
+                        return trick
+                elif not self.outOfSuit(trump):
+                    if trick[0] == trump and trick[1:] > winRank or winSuit != trump[0]:
+                        return trick
+                    else:
+                        print(self.getName() + ", enter appropriate trick")
+                        self.askTrick(currentTricks, winRank, winSuit, trump)
+                        return
+                else:
+                    return trick
+        print(self.getName() + ", enter appropriate trick")
+        self.askTrick(currentTricks, winRank, winSuit, trump)
+        return
 
     def getBid(self):
         return self._bid
@@ -176,6 +270,7 @@ class Team:
     def __init__(self, player1, player2):
         self._p1 = player1
         self._p2 = player2
+        self._score = 0
 
     def getPartners(self):
         return [self._p1, self._p2]
@@ -186,6 +281,18 @@ class Team:
     def getPartner2(self):
         return self._p2
 
+    def getPartnerOf(self, player):
+        if player == self._p1:
+            return self._p2
+        else:
+            return self._p1
+
+    def addScore(self, score):
+        self._score += score
+
+    def getScore(self):
+        return self._score
+
 class Game:
 
     def __init__(self, players):
@@ -194,8 +301,8 @@ class Game:
         self._p3 = Player(players[2])
         self._p4 = Player(players[3])
         self._allPlayers = [self._p1, self._p2, self._p3, self._p4]
-        self._team1 = Team(self._p1, self._p2)
-        self._team2 = Team(self._p3, self._p4)
+        self._team1 = Team(self._p1, self._p3)
+        self._team2 = Team(self._p2, self._p4)
         self._allTeams = [self._team1, self._team2]
 
     def getAllPlayers(self):
@@ -227,19 +334,39 @@ class PinochleRound:
             for player in self._allPlayers:
                 player.fillHand(self._deck.takeTopCard())
 
+    def reshuffle(self):
+        for player in self._allPlayers:
+            for card in player.getHand():
+                player.removeCard(card)
+        self._deck = Deck()
+        self._deck.shuffle()
+
     def getPlayer(self, playerName):
         for player in self._allPlayers:
             if player.getName() == playerName:
                 return player
 
+    def getTeam(self, player):
+        if player in self._team1.getPartners():
+            return self._team1
+        else:
+            return self._team2
+
+    def addScore(self, score, player):
+        team = self.getTeam(player)
+        team.addScore(score)
+
     def showHand(self, playerName):
         player = self.getPlayer(playerName)
+        print(playerName + "'s hand:")
         for card in player.getHand():
             print(card.getCard())
 
     def bidding(self):
         passed = 0
         currentBid = 240
+        for player in self._allPlayers:
+            player.resetBid()
         biddingPlayers = self._allPlayers.copy()
         first = True
         while passed < 3:
@@ -263,6 +390,10 @@ class PinochleRound:
         finalBid = biddingPlayers[0].getBid()
         if finalBid == "Pass":
             print("No bids, reshuffle?")
+            self.reshuffle()
+            self.deal()
+            self.bidding()
+            return
         else:
             self._finalBid = finalBid
             self._tookBid = biddingPlayers[0]
@@ -272,43 +403,65 @@ class PinochleRound:
                 if self._trump in self._deck.getSuits():
                     break
 
-    def passCards(self):
-        player = self._tookBid
-        if player in self._team1.getPartners():
-             if player == self._team1.getPartner1():
-                 partner = self._team1.getPartner2()
-             else:
-                partner = self._team1.getPartner1()
-        else:
-            if player == self._team2.getPartner1():
-                partner = self._team2.getPartner2()
+    def pass4Cards(self, passing):
+        recieving = self.getTeam(passing).getPartnerOf(passing)
+        counter = 1
+        message = passing.getName() + ", pass card " + str(counter) + ":"
+        while counter < 5:
+            cardToPassSimple = input(message)
+            cardToPass = passing.getCardFromSimple(cardToPassSimple)
+            if passing.isInHand(cardToPass):
+                recieving.fillHand(cardToPass)
+                passing.removeCard(cardToPass)
+                counter += 1
+                message = passing.getName() + ", pass card " + str(counter) + ":"
             else:
-                partner = self._team2.getPartner1()
+                message = 'Card not in hand. ' + passing.getName() + ", pass card " + str(counter) + ":"
 
-        passing = []
-        for i in range(4):
-            passing.append(input(partner.getName() + ", pass cards:"))
+    def passingCards(self):
+        player = self._tookBid
+        team = self.getTeam(player)
+        partner = team.getPartnerOf(player)
 
-        print(passing)
-        for card in passing:
-            player.fillHand(partner.getCardFromSimple(card))
+        self.pass4Cards(partner)
 
-        for card in passing:
-            partner.removeCard(partner.getCardFromSimple(card))
+        self.showHand("Dad")
+        self.showHand("Lizzy")
 
-        passingBack = []
-        for i in range(4):
-            passingBack.append(input(player.getName() + ", pass four cards:"))
-
-        for card in passingBack:
-            partner.fillHand(player.getCardFromSimple(card))
-
-        for card in passingBack:
-            player.removeCard(player.getCardFromSimple(card))
+        self.pass4Cards(player)
 
     def scoreMeld(self):
         for player in self._allPlayers:
             player.scoreHand(self._trump)
+
+    def getNextPlayer(self, currentPlayer):
+        for player in self._allPlayers:
+            if player == currentPlayer:
+                index = self._allPlayers.index(player)
+                return self._allPlayers[(index +  1)%4]
+
+    def trickPlaying(self):
+        nextPlayer = self._tookBid
+        round = 1
+        trickCards = []
+        winRank,winSuit,winPlayer = [0, 0, False]  # rank, suit, player
+        while round < 13:
+            for player in self._allPlayers:
+                if player == nextPlayer:
+                    trick = player.askTrick(trickCards, winRank, winSuit, self._trump)
+                    if int(trick[1:]) > int(winRank):
+                        winRank,winSuit,winPlayer = [trick[1:], trick[0], player]
+                if len(trickCards) == 4:
+                    counters = 0
+                    for card,player in trickCards:
+                        if card.isCounter():
+                            counters += 10
+                    self.addScore(counters, winPlayer)
+                    trickCards = []
+                    print(len(trickCards))
+                    nextPlayer = winPlayer
+                    round += 1
+3
 
 
 if __name__ == '__main__':
@@ -317,8 +470,11 @@ if __name__ == '__main__':
     round = PinochleRound(myGame)
     round.deal()
     round.showHand("Lizzy")
-    round.bidding()
+    round.showHand("Dad")
     round.showHand("Micah")
-    round.passCards()
+    round.showHand("Mom")
+    round.bidding()
+  #  round.passingCards()
     round.scoreMeld()
+    round.trickPlaying()
 
