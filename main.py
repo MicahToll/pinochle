@@ -256,6 +256,9 @@ class Player:
     def getBid(self):
         return self._bid
 
+    def getMeld(self):
+        return self._meld
+
     def scoreGroups(self, group, score, doubleScore):
         tempHand = self.getSimpleHand()
         if set(group).issubset(tempHand):
@@ -267,6 +270,10 @@ class Player:
                 self._meld += score
 
     def scoreHand(self, trump):
+        fiveNinesNoMeldCheck = False
+        if trump is None:
+            fiveNinesNoMeldCheck = True
+
         acesAround = []
         kingsAround = []
         queensAround = []
@@ -277,12 +284,6 @@ class Player:
             queensAround.append(s.value + 'Q')
             jacksAround.append(s.value + 'J')
 
-        run = [trump.value + "A", trump.value + "10", trump.value + "K", trump.value + "Q", trump.value + "J"]
-        royalMarriage = [trump.value + "K", trump.value + "Q"]
-        royalHalfMarriageA = [trump.value + "A", trump.value + "10", trump.value + "K", trump.value + "K", trump.value + "Q", trump.value + "J"]
-        royalHalfMarriageB = [trump.value + "A", trump.value + "10", trump.value + "K", trump.value + "Q", trump.value + "Q", trump.value + "J"]
-        nine = [trump.value + "9"]
-
         pinochle = [Suits.SPADES.value + "Q", Suits.DIAMONDS.value + "J"]
 
         self.scoreGroups(acesAround, 100, 1000)
@@ -290,29 +291,53 @@ class Player:
         self.scoreGroups(queensAround, 60, 600)
         self.scoreGroups(jacksAround, 40, 400)
 
-        if set(run).issubset(self.getSimpleHand()):
-            self.scoreGroups(run, 150, 1500)
-            if set(royalHalfMarriageA).issubset(self.getSimpleHand()):
-                self._meld += 20
-            if set(royalHalfMarriageB).issubset(self.getSimpleHand()):
-                self._meld += 20
-        elif set(royalMarriage).issubset(self.getSimpleHand()):
-            self.scoreGroups(royalMarriage, 40, 80)
-
-        self.scoreGroups(nine, 10, 20)
         self.scoreGroups(pinochle, 40, 300)
 
         for suit in Suits:
-            if suit != trump:
+            if not fiveNinesNoMeldCheck and suit != trump:
+                marriage = [suit.value + "K", suit.value + "Q"]
+                self.scoreGroups(marriage, 20, 40)
+            else:
                 marriage = [suit.value + "K", suit.value + "Q"]
                 self.scoreGroups(marriage, 20, 40)
 
-        print(self.getName() + "'s meld: " + str(self._meld))
+        if not fiveNinesNoMeldCheck:
+            run = [trump.value + "A", trump.value + "10", trump.value + "K", trump.value + "Q", trump.value + "J"]
+            royalMarriage = [trump.value + "K", trump.value + "Q"]
+            royalHalfMarriageA = [trump.value + "A", trump.value + "10", trump.value + "K", trump.value + "K", trump.value + "Q", trump.value + "J"]
+            royalHalfMarriageB = [trump.value + "A", trump.value + "10", trump.value + "K", trump.value + "Q", trump.value + "Q", trump.value + "J"]
+            nine = [trump.value + "9"]
+
+            if set(run).issubset(self.getSimpleHand()):
+                self.scoreGroups(run, 150, 1500)
+                if set(royalHalfMarriageA).issubset(self.getSimpleHand()):
+                    self._meld += 20
+                if set(royalHalfMarriageB).issubset(self.getSimpleHand()):
+                    self._meld += 20
+            elif set(royalMarriage).issubset(self.getSimpleHand()):
+                self.scoreGroups(royalMarriage, 40, 80)
+
+            self.scoreGroups(nine, 10, 20)
+            print(self.getName() + "'s meld: " + str(self._meld))
 
     def loadMeldPoints(self):
         tempMeld = self._meld
         self._meld = 0
         return tempMeld
+
+    def is5NinesNoMeld(self):
+        nines = 0
+        for card in self._hand:
+            if card.getRankNum() == 1:
+                nines += 1
+        if nines < 5:
+            return False
+        else:
+            self.scoreHand(None)
+            if self._meld == 0:
+                return True
+            else:
+                return False
 
 class Team:
 
@@ -359,6 +384,9 @@ class Team:
     def getName(self):
         return self._name
 
+    def setName(self, name):
+        self._name = name
+
 class Game:
 
     def __init__(self, players=['', '', '', '']):
@@ -370,6 +398,15 @@ class Game:
         self._team1 = Team(self._p1, self._p3, "Team 1")
         self._team2 = Team(self._p2, self._p4, "Team 2")
         self._allTeams = [self._team1, self._team2]
+
+    def askTeamNames(self):
+        for team in self._allTeams:
+            players = ""
+            for player in team.getPartners():
+                players += player.getName() + " and "
+            players = players.removesuffix(' and ')
+            name = input(players + " team name: ")
+            team.setName(name)
 
     def askPlayerNames(self):
         for player in self._allPlayers:
@@ -454,7 +491,7 @@ class PinochleRound:
         self._trump = False
         self._finalBid = 0
         self._tookBid = False
-        self._biddersScore = 0
+        self._shootMoon = False
         self._game = game
 
     def deal(self):
@@ -464,10 +501,21 @@ class PinochleRound:
                 player.fillHand(card)
                 card.setPlayer(player)
 
+    def dealRigged(self):
+        for index in range(12):
+            for player in self._allPlayers:
+                if self._allPlayers.index(player) == 3:
+                    card = Card(Suits.SPADES, Ranks.NINE, player)
+                else:
+                    card = self._deck.takeTopCard()
+                player.fillHand(card)
+                card.setPlayer(player)
+
     def reshuffle(self):
         for player in self._allPlayers:
-            for card in player.getHand():
-                player.removeCard(card)
+            hand = player.getHand().copy()
+            for index in range(len(hand)):
+                player.removeCard(hand[index])
         self._deck = Deck()
         self._deck.shuffle()
 
@@ -490,8 +538,8 @@ class PinochleRound:
 
     def addScore(self, score, player):
         team = self.getTeam(player)
-        if team == self.getTeam(self._tookBid):
-            self._biddersScore += score
+     #   if team == self.getTeam(self._tookBid):
+     #       self._biddersScore += score
         team.addScore(score)
 
     def showHand(self, player):
@@ -503,7 +551,25 @@ class PinochleRound:
         for player in self._allPlayers:
             self.showHand(player)
 
+    def check5NinesNoMeld(self):
+        for player in self._allPlayers:
+            if player.is5NinesNoMeld():
+                while True:
+                    answer = input(player.getName() + ", do you want to throw with 5 nines no meld?").upper()
+                    if answer == "YES":
+                        print(player.getName() + " had 5 nines no meld. Reshuffling and dealing")
+                        self.reshuffle()
+                        self.deal()
+                        self.showAllHands()
+                        self.check5NinesNoMeld()
+                        break
+                    elif answer == "NO":
+                        return
+                    else:
+                        print("Answer with yes or no")
+
     def bidding(self):
+        self.check5NinesNoMeld()
         passed = 0
         currentBid = 240
         for player in self._allPlayers:
@@ -575,7 +641,39 @@ class PinochleRound:
     def scoreMeld(self):
         for player in self._allPlayers:
             player.scoreHand(self._trump)
-            self.addScore(player.loadMeldPoints(), player)
+
+        self.askShootMoon()
+
+        if not self.canMakeBid() and not self._shootMoon:
+            self.throwIn()
+            return
+
+        for player in self._allPlayers:
+            if self._shootMoon:
+                if self.getTeam(player) != self.getTeam(self._tookBid):
+                    self.addScore(player.loadMeldPoints(), player)
+            else:
+                self.addScore(player.loadMeldPoints(), player)
+
+    def canMakeBid(self):
+        meld = self._tookBid.getMeld() + self.getTeam(self._tookBid).getPartnerOf(self._tookBid).getMeld()
+        if meld + 250 < self._finalBid:
+            return False
+        else:
+            return True
+
+    def askShootMoon(self):
+        while True:
+            answer = input(self._tookBid.getName() + ", do you want to shoot the moon?").upper()
+            if answer == "YES":
+                print(self._tookBid.getName() + " is shooting the moon")
+                self._shootMoon = True
+                return
+            elif answer == "NO":
+                self._shootMoon = False
+                return
+            else:
+                print("Answer with yes or no")
 
     def getNextPlayer(self, currentPlayer):
         for player in self._allPlayers:
@@ -610,9 +708,14 @@ class PinochleRound:
                     nextPlayer = self.getNextPlayer(player)
 
     def madeBid(self):
+        if self._shootMoon:
+            self._finalBid = 250
+
         if self.getTeam(self._tookBid).getRoundScore() >= self._finalBid:
             return True
         else:
+            if self._shootMoon:
+                self._finalBid = 500
             return False
 
     def finishRound(self):
@@ -622,6 +725,8 @@ class PinochleRound:
 
         if self.madeBid():
             score = biddingTeam.getRoundScore()
+            if self._shootMoon:
+                score = 500
             biddingTeam.addScore(score, True)
             print(biddingTeam.getName(), "made bid!")
             print(biddingTeam.getName(), "scored:", score)
@@ -638,8 +743,8 @@ if __name__ == '__main__':
     players = ["Lizzy", "Micah", "Dad", "Mom"]
     myGame = Game(players)
     myGame.showScores()
-
-   # myGame.askPlayerNames()
+  #  myGame.askPlayerNames()
+  #  myGame.askTeamNames()
     round = PinochleRound(myGame)
     round.deal()
     round.showAllHands()
