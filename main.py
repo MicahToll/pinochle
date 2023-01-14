@@ -112,7 +112,7 @@ class Deck:
 
 class Player:
 
-    def __init__(self, name):
+    def __init__(self, name=""):
         self._name = name
         self._hand = []
         self._bid = ""
@@ -120,6 +120,9 @@ class Player:
 
     def getName(self):
         return self._name
+
+    def setName(self, name):
+        self._name = name
 
     def getCardFromSimple(self, simpleCard):
         for card in self._hand:
@@ -256,17 +259,23 @@ class Player:
     def scoreGroups(self, group, score, doubleScore):
         tempHand = self.getSimpleHand()
         if set(group).issubset(tempHand):
-            tempHand = set(tempHand) - set(group)
+            for card in group:
+                tempHand.remove(card)
             if set(group).issubset(tempHand):
                 self._meld += doubleScore
             else:
                 self._meld += score
 
     def scoreHand(self, trump):
-        acesAround = ["hA", "sA", "dA", "cA"]
-        kingsAround = ["hK", "sK", "dK", "cK"]
-        queensAround = ["hQ", "sQ", "dQ", "cQ"]
-        jacksAround = ["hJ", "sJ", "dJ", "cJ"]
+        acesAround = []
+        kingsAround = []
+        queensAround = []
+        jacksAround = []
+        for s in Suits:
+            acesAround.append(s.value + 'A')
+            kingsAround.append(s.value + 'K')
+            queensAround.append(s.value + 'Q')
+            jacksAround.append(s.value + 'J')
 
         run = [trump.value + "A", trump.value + "10", trump.value + "K", trump.value + "Q", trump.value + "J"]
         royalMarriage = [trump.value + "K", trump.value + "Q"]
@@ -274,7 +283,7 @@ class Player:
         royalHalfMarriageB = [trump.value + "A", trump.value + "10", trump.value + "K", trump.value + "Q", trump.value + "Q", trump.value + "J"]
         nine = [trump.value + "9"]
 
-        pinochle = ["sQ", "dJ"]
+        pinochle = [Suits.SPADES.value + "Q", Suits.DIAMONDS.value + "J"]
 
         self.scoreGroups(acesAround, 100, 1000)
         self.scoreGroups(kingsAround, 80, 800)
@@ -300,12 +309,25 @@ class Player:
 
         print(self.getName() + "'s meld: " + str(self._meld))
 
+    def loadMeldPoints(self):
+        tempMeld = self._meld
+        self._meld = 0
+        return tempMeld
+
 class Team:
 
-    def __init__(self, player1, player2):
+    def __init__(self, player1, player2, name):
         self._p1 = player1
         self._p2 = player2
+        self._name = name
         self._score = 0
+        self._roundScore = 0
+
+    def isOnTeam(self, player):
+        if player == self._p1 or player == self._p2:
+            return True
+        else:
+            return False
 
     def getPartners(self):
         return [self._p1, self._p2]
@@ -322,23 +344,37 @@ class Team:
         else:
             return self._p1
 
-    def addScore(self, score):
-        self._score += score
+    def addScore(self, score, newRound=False):
+        if not newRound:
+            self._roundScore += score
+        else:
+            self._score += score
 
     def getScore(self):
         return self._score
 
+    def getRoundScore(self):
+        return self._roundScore
+
+    def getName(self):
+        return self._name
+
 class Game:
 
-    def __init__(self, players):
+    def __init__(self, players=['', '', '', '']):
         self._p1 = Player(players[0])
         self._p2 = Player(players[1])
         self._p3 = Player(players[2])
         self._p4 = Player(players[3])
         self._allPlayers = [self._p1, self._p2, self._p3, self._p4]
-        self._team1 = Team(self._p1, self._p3)
-        self._team2 = Team(self._p2, self._p4)
+        self._team1 = Team(self._p1, self._p3, "Team 1")
+        self._team2 = Team(self._p2, self._p4, "Team 2")
         self._allTeams = [self._team1, self._team2]
+
+    def askPlayerNames(self):
+        for player in self._allPlayers:
+            name = input("Player " + str(self._allPlayers.index(player) + 1) + " name: ")
+            player.setName(name)
 
     def getAllPlayers(self):
         return self._allPlayers
@@ -351,6 +387,11 @@ class Game:
 
     def getTeams(self, number): # number is 1-2
         return self._allTeams[number-1]
+
+    def showScores(self):
+        print("Scores")
+        print("Team 1: " + str(self._team1.getScore()))
+        print("Team 2: " + str(self._team2.getScore()))
 
 class Tricks:
 
@@ -411,8 +452,10 @@ class PinochleRound:
         self._deck = Deck()
         self._deck.shuffle()
         self._trump = False
-        self._finalBid = False
+        self._finalBid = 0
         self._tookBid = False
+        self._biddersScore = 0
+        self._game = game
 
     def deal(self):
         for index in range(12):
@@ -439,20 +482,26 @@ class PinochleRound:
         else:
             return self._team2
 
+    def getOtherTeam(self, player):
+        if player in self._team1.getPartners():
+            return self._team2
+        else:
+            return self._team1
+
     def addScore(self, score, player):
         team = self.getTeam(player)
+        if team == self.getTeam(self._tookBid):
+            self._biddersScore += score
         team.addScore(score)
 
-    def showScores(self):
-        print("Scores")
-        print("Team 1: " + str(self._team1.getScore()))
-        print("Team 2: " + str(self._team2.getScore()))
-
-    def showHand(self, playerName):
-        player = self.getPlayer(playerName)
-        print(playerName + "'s hand:")
+    def showHand(self, player):
+        print(player.getName() + "'s hand:")
         for card in player.getHand():
             print(card.getCardNeat())
+
+    def showAllHands(self):
+        for player in self._allPlayers:
+            self.showHand(player)
 
     def bidding(self):
         passed = 0
@@ -502,10 +551,10 @@ class PinochleRound:
     def pass4Cards(self, playerPassing):
         recieving = self.getTeam(playerPassing).getPartnerOf(playerPassing)
         counter = 1
-        self.showHand(playerPassing.getName())
+        self.showHand(playerPassing)
         message = playerPassing.getName() + ", pass card " + str(counter) + ":"
         while counter < 5:
-            cardToPassSimple = input(message)
+            cardToPassSimple = input(message).upper()
             cardToPass = playerPassing.getCardFromSimple(cardToPassSimple)
             if playerPassing.isInHand(cardToPass):
                 recieving.fillHand(cardToPass)
@@ -526,6 +575,7 @@ class PinochleRound:
     def scoreMeld(self):
         for player in self._allPlayers:
             player.scoreHand(self._trump)
+            self.addScore(player.loadMeldPoints(), player)
 
     def getNextPlayer(self, currentPlayer):
         for player in self._allPlayers:
@@ -540,19 +590,18 @@ class PinochleRound:
         while round < 13:
             for player in self._allPlayers:
                 if trickCards.isDone():
+                    counters = trickCards.getCounters()
                     if round == 12:
                         counters += 10
-                    counters = trickCards.getCounters()
                     winCard = trickCards.getWinningCard(self._trump)
                     self.addScore(counters, winCard.getPlayer())
-                    self.showScores()
+                    self._game.showScores()
                     trickCards = Tricks()
                     nextPlayer = winCard.getPlayer()
                     round += 1
-                    for p in self._allPlayers:
-                        self.showHand(p.getName())
                     break
                 if player == nextPlayer:
+                    self.showHand(player)
                     trick = None
                     while trick is None:
                         trick = player.askTrick(trickCards, self._trump)
@@ -560,18 +609,43 @@ class PinochleRound:
                     trickCards.playCard(trick)
                     nextPlayer = self.getNextPlayer(player)
 
+    def madeBid(self):
+        if self.getTeam(self._tookBid).getRoundScore() >= self._finalBid:
+            return True
+        else:
+            return False
+
+    def finishRound(self):
+        biddingTeam = self.getTeam(self._tookBid)
+        otherTeam = self.getOtherTeam(self._tookBid)
+        print(biddingTeam.getName(), " bid: ", self._finalBid)
+
+        if self.madeBid():
+            score = biddingTeam.getRoundScore()
+            biddingTeam.addScore(score, True)
+            print(biddingTeam.getName(), "made bid!")
+            print(biddingTeam.getName(), "scored:", score)
+        else:
+            biddingTeam.addScore(-self._finalBid, True)
+            print(biddingTeam.getName(), "did not make the bid! :(")
+            print(biddingTeam.getName(), "scored:", -self._finalBid)
+
+        score = otherTeam.getRoundScore()
+        otherTeam.addScore(score, True)
+        print(otherTeam.getName(), " scored: ", score)
 
 if __name__ == '__main__':
     players = ["Lizzy", "Micah", "Dad", "Mom"]
     myGame = Game(players)
+    myGame.showScores()
+
+   # myGame.askPlayerNames()
     round = PinochleRound(myGame)
     round.deal()
-    round.showHand("Lizzy")
-    round.showHand("Dad")
-    round.showHand("Micah")
-    round.showHand("Mom")
+    round.showAllHands()
     round.bidding()
-  #  round.passingCards()
+    #round.passingCards()
     round.scoreMeld()
-    round.trickPlaying()
+    #round.trickPlaying()
+    round.finishRound()
 
