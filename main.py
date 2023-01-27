@@ -1,17 +1,28 @@
 import random
 from enum import Enum
+import matplotlib.pyplot as plt
+#from matplotlib import pyplot as plt
+import matplotlib.image as mpimg
 
 class Card:
-
-    def __init__(self, suit, rank, player):
-        self._suit = suit
-        self._rank = rank
-        self._player = player
 
     def __init__(self, suit, rank, player=False):
         self._suit = suit
         self._rank = rank
         self._player = player
+        self._cardFront
+        self._cardBack
+
+        for card in CardSVGs:
+            if self._suit.name in card:
+                if self._rank.name in card:
+                    self._cardFront = card
+                    break
+
+    def printCardFront(self):
+        img = mpimg.imread(self._cardFront)
+        imgplot = plt.imshow(img)
+        plt.show()
 
     def setPlayer(self, player):
         self._player = player
@@ -78,6 +89,32 @@ class Suits(Enum):
     CLUBS = 'C'
     DIAMONDS = 'D'
     HEARTS = 'H'
+
+class CardSVGs(Enum):
+    CLUBS_ACE = 'CLUB-1-ACE.svg'
+    CLUBS_NINE = 'CLUB-9-NINE.svg'
+    CLUBS_TEN = 'CLUB-10-TEN.svg'
+    CLUBS_JACK = 'CLUB-11-JACK.svg'
+    CLUBS_QUEEN = 'CLUB-12-QUEEN.svg'
+    CLUBS_KING = 'CLUB-13-KING.svg'
+    DIAMONDS_ACE = 'DIAMOND-1-ACE.svg'
+    DIAMONDS_NINE = 'DIAMOND-9-NINE.svg'
+    DIAMONDS_TEN = 'DIAMOND-10-TEN.svg'
+    DIAMONDS_JACK = 'DIAMOND-11-JACK.svg'
+    DIAMONDS_QUEEN = 'DIAMOND-12-QUEEN.svg'
+    DIAMONDS_KING = 'DIAMOND-13-KING.svg'
+    HEARTS_ACE = 'HEART-1-ACE.svg'
+    HEARTS_NINE = 'HEART-9-NINE.svg'
+    HEARTS_TEN = 'HEART-10-TEN.svg'
+    HEARTS_JACK = 'HEART-11-JACK.svg'
+    HEARTS_QUEEN = 'HEART-12-QUEEN.svg'
+    HEARTS_KING = 'HEART-13-KING.svg'
+    SPADES_ACE = 'SPADES-1-ACE.svg'
+    SPADES_NINE = 'SPADES-9-NINE.svg'
+    SPADES_TEN = 'SPADES-10-TEN.svg'
+    SPADES_JACK = 'SPADES-11-JACK.svg'
+    SPADES_QUEEN = 'SPADES-12-QUEEN.svg'
+    SPADES_KING = 'SPADES-13-KING.svg'
 
 class NoNumberBid(Enum):
     PASS = 'pass'
@@ -153,6 +190,10 @@ class Player:
         for card in self._hand:
             simpleHand.append(card.getSimpleCard())
         return simpleHand
+
+    def printHandFront(self):
+        for card in self._hand:
+            card.printCardFront()
 
     def sorting(self, card):
         key = card.getSimpleCard()
@@ -544,8 +585,9 @@ class PinochleRound:
 
     def showHand(self, player):
         print(player.getName() + "'s hand:")
-        for card in player.getHand():
-            print(card.getCardNeat())
+        #for card in player.getHand():
+            #print(card.getCardNeat())
+        player.printCardFront()
 
     def showAllHands(self):
         for player in self._allPlayers:
