@@ -1,18 +1,11 @@
 #!/usr/bin/env python
 
 import asyncio
-
 import websockets
-
 import json
-
 import itertools
-
 from connect4 import PLAYER1, PLAYER2
-
 from connect4 import Connect4
-
-
 import secrets
 
 
@@ -65,7 +58,6 @@ async def join(websocket, join_key):
     # Register to receive moves from this game.
     connected.add(websocket)
     try:
-
         # Temporary - for testing.
         print("second player joined game", id(game))
         async for message in websocket:
@@ -92,6 +84,21 @@ async def main():
     async with websockets.serve(handler, "", 8001):
         await asyncio.Future()  # run forever
 
-
 if __name__ == "__main__":
     asyncio.run(main())
+
+#stuff
+"""
+what does each client know?
+their hand, the playing area
+
+what does the server know?
+every player's hand and the play area
+
+so
+each message to server should look like: 
+{newly_played: [], "other":False}
+
+and each message from server should look like:
+{hand:[], play_area: [], new request(if there is one)}
+"""
