@@ -1,8 +1,5 @@
 import random
 from enum import Enum
-import matplotlib.pyplot as plt
-#from matplotlib import pyplot as plt
-import matplotlib.image as mpimg
 
 class Card:
 
@@ -439,6 +436,7 @@ class Game:
         self._team1 = Team(self._p1, self._p3, "Team 1")
         self._team2 = Team(self._p2, self._p4, "Team 2")
         self._allTeams = [self._team1, self._team2]
+        self._gameOver = False
 
     def askTeamNames(self):
         for team in self._allTeams:
@@ -468,8 +466,25 @@ class Game:
 
     def showScores(self):
         print("Scores")
-        print("Team 1: " + str(self._team1.getScore()))
-        print("Team 2: " + str(self._team2.getScore()))
+        print(self._team1.getName() + ": " + str(self._team1.getScore()))
+        print(self._team2.getName() + ": " + str(self._team2.getScore()))
+
+    def gameOver(self):
+        self._gameOver = True
+
+    def isGameOver(self):
+        return self._gameOver
+
+    def playRound(self):
+        round = PinochleRound(self)
+        round.deal()
+        round.showAllHands()
+        round.bidding()
+        round.passingCards()
+        round.scoreMeld()
+        round.trickPlaying()
+        round.finishRound()
+
 
 class Tricks:
 
@@ -781,18 +796,34 @@ class PinochleRound:
         otherTeam.addScore(score, True)
         print(otherTeam.getName(), " scored: ", score)
 
+        winner = self.winner()
+        if winner is not Null:
+            print(winner.getName(), " wins!!")
+            self._game.showScores()
+
+    def winner(self): #Null is no winner yet
+        t1Score = self._team1.getScore()
+        t2Score = self._team2.getScore()
+
+        if t1Score < 1500 and t1Score > -1500 and t2Score < 1500 and t2Score > -1500:
+            return Null
+        elif t1Score >= 1500 and t2Score < t1Score:
+            return self._team1
+        elif t2Score >= 1500 and t1Score < t2Score:
+            return self._team2
+        elif t1Score <= -1500 and t2Score > t1Score:
+            return self._team2
+        elif t2Score <= -1500 and t1Score > t2Score:
+            return self._team1
+        else:
+            return Null
+
+
 if __name__ == '__main__':
     players = ["Lizzy", "Micah", "Dad", "Mom"]
     myGame = Game(players)
     myGame.showScores()
   #  myGame.askPlayerNames()
   #  myGame.askTeamNames()
-    round = PinochleRound(myGame)
-    round.deal()
-    round.showAllHands()
-    round.bidding()
-    #round.passingCards()
-    round.scoreMeld()
-    #round.trickPlaying()
-    round.finishRound()
+    myGame.playRound()
 
